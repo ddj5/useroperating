@@ -1,0 +1,4 @@
+interface:
+  display_name: "中台需求文档"
+  short_description: "把业务数据诉求整理成后台/数据中台产品需求文档。"
+  default_prompt: "基于这段业务诉求，整理一份后台/数据中台产品需求文档。"
