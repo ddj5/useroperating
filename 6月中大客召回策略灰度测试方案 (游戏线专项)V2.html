@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>【PRD】6月中大客召回策略 A/B/C 灰度测试方案 (游戏线专项)</title>
+    <style>
+        :root {
+            --primary: #0f172a;
+            --secondary: #1e293b;
+            --accent: #2563eb;
+            --success: #059669;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #334155;
+            --text-muted: #64748b;
+            --code-bg: #1e293b;
+            --casino-color: #8b5cf6;
+            --sports-color: #10b981;
+        }
+
+        * { box-sizing: border-box; }
+        
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: var(--bg); color: var(--text-main); line-height: 1.6; margin: 0; padding: 40px 20px; }
+        .document-container { max-width: 1150px; margin: 0 auto; background: var(--card); border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); overflow: hidden; border: 1px solid var(--border); }
+
+        /* 报头区域 */
+        .doc-header { background: #ffffff; padding: 40px; border-bottom: 2px solid var(--accent); }
+        .doc-tag { display: inline-block; background: #e0e7ff; color: var(--accent); padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 700; margin-bottom: 15px; letter-spacing: 1px; }
+        .doc-header h1 { margin: 0 0 15px 0; font-size: 26px; font-weight: 800; color: var(--primary); }
+        .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 25px; background: #f8fafc; padding: 15px 20px; border-radius: 8px; border: 1px solid var(--border); }
+        .meta-item { font-size: 13.5px; color: var(--text-muted); }
+        .meta-item strong { color: var(--primary); display: block; font-size: 14.5px; margin-top: 4px; }
+
+        /* 内容区域 */
+        .doc-content { padding: 40px; }
+        .section-title { font-size: 18px; font-weight: 700; color: var(--primary); margin: 40px 0 20px 0; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; display: flex; align-items: center; }
+        .section-title:first-child { margin-top: 0; }
+        .section-title::before { content: "▌"; color: var(--accent); font-size: 18px; margin-right: 10px;}
+
+        /* 信息提示框 */
+        .callout { background: #eff6ff; border-left: 4px solid var(--accent); padding: 20px; border-radius: 0 8px 8px 0; margin-bottom: 25px; font-size: 14px; }
+        .callout.danger { background: #fef2f2; border-color: var(--danger); }
+        .callout.warning { background: #fffbeb; border-color: var(--warning); }
+        .callout.casino { background: #f5f3ff; border-color: var(--casino-color); }
+        .callout.sports { background: #ecfdf5; border-color: var(--sports-color); }
+        .callout strong { color: var(--primary); }
+
+        /* 表格样式 */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-bottom: 30px; }
+        .data-table th { background: #f8fafc; color: var(--primary); padding: 14px; text-align: left; font-weight: 700; border-bottom: 2px solid var(--border); }
+        .data-table td { padding: 14px; border-bottom: 1px solid var(--border); vertical-align: middle; line-height: 1.6; }
+        .data-table tr:hover td { background: #f8fafc; }
+        
+        .rule-box { background: rgba(255,255,255,0.8); border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px; margin-bottom: 8px; }
+        .rule-box:last-child { margin-bottom: 0; }
+        .rule-title { font-weight: 700; color: var(--primary); margin-bottom: 4px; display: flex; justify-content: space-between;}
+        .rule-badge { font-size: 11px; padding: 2px 6px; border-radius: 4px; background: #e2e8f0; color: #475569; }
+
+        /* 代码块样式 */
+        .code-block { background: var(--code-bg); color: #e2e8f0; padding: 20px; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 13.5px; overflow-x: auto; margin-bottom: 20px; line-height: 1.5; }
+        .code-keyword { color: #c678dd; } .code-func { color: #61afef; } .code-string { color: #98c379; } .code-comment { color: #5c6370; font-style: italic; }
+
+        /* 飞书卡片样式原型 */
+        .feishu-wrapper { background: #f1f5f9; padding: 30px; border-radius: 12px; margin-bottom: 30px; display: flex; justify-content: center; }
+        .feishu-card { background: #ffffff; border-radius: 8px; width: 100%; max-width: 550px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; border: 1px solid #e2e8f0; }
+        .feishu-header { background: #3370ff; color: #ffffff; padding: 16px; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .feishu-body { padding: 20px; }
+        .feishu-title { font-size: 18px; font-weight: 600; color: #1f2329; margin-bottom: 16px; }
+        .feishu-data-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px; align-items: center;}
+        .feishu-data-row:last-child { border-bottom: none; }
+        .feishu-label { color: #64748b; font-weight: 500; }
+        .feishu-value { font-weight: 600; text-align: right;}
+        .feishu-metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; background: #f8fafc; padding: 15px; border-radius: 8px;}
+        .metric-col { text-align: center; }
+        .metric-col-title { font-size: 12px; color: #64748b; margin-bottom: 5px; font-weight: 600;}
+        .metric-val { font-size: 15px; font-weight: 700; color: #1f2329;}
+        .val-down { color: #dc2626; } .val-up { color: #059669; }
+
+        /* 客服 SOP 卡片 */
+        .sop-grid { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 30px; }
+        .sop-card { background: #ffffff; border: 1px solid var(--border); border-radius: 8px; padding: 0; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .sop-header { background: #f1f5f9; padding: 12px 20px; font-weight: 700; color: var(--primary); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;}
+        .sop-tag { font-size: 12px; padding: 2px 8px; border-radius: 4px; color: white;}
+        .sop-tag.casino { background: var(--casino-color); }
+        .sop-tag.sports { background: var(--sports-color); }
+        .sop-tag.danger { background: var(--danger); }
+        .sop-body { padding: 20px; }
+        .sop-intent { font-size: 13.5px; color: var(--text-muted); margin-bottom: 10px; }
+        .sop-script { background: #f8fafc; border-left: 3px solid var(--success); padding: 15px; font-size: 14.5px; color: var(--primary); font-weight: 500; border-radius: 0 8px 8px 0; margin-bottom: 0; }
+
+        /* 标签 */
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 700; }
+        .badge-a { background: #fee2e2; color: #b91c1c; }
+        .badge-b { background: #e0e7ff; color: #4338ca; }
+        .badge-c { background: #fef3c7; color: #b45309; }
+
+    </style>
+</head>
+<body>
+
+<div class="document-container">
+    <!-- 报头 -->
+    <div class="doc-header">
+        <span class="doc-tag">PRODUCT REQUIREMENT DOC (PRD)</span>
+        <h1>6月中大客召回 A/B/C 灰度测试方案 (针对游戏/混合线专项重构)</h1>
+        
+        <div class="meta-grid">
+            <div class="meta-item">所属模块<strong>运营增效 / 流失召回</strong></div>
+            <div class="meta-item">试点市场<strong>肯尼亚 (KE)、加纳 (GH)</strong></div>
+            <div class="meta-item">测试目标层级<strong>[50, 1000) 及 [1000, 10w) 档位</strong></div>
+            <div class="meta-item">测试运行周期<strong>2026-06-01 至 2026-06-14 (两周)</strong></div>
+        </div>
+    </div>
+
+    <div class="doc-content">
+        
+        <!-- Part 1: 背景 -->
+        <h2 class="section-title">一、 核心逻辑定调与测试范围</h2>
+        <div class="callout warning">
+            <strong>🎯 核心策略定调：不动体育的蛋糕，专治游戏的套利！</strong><br>
+            前期数据论证，体育线用户带来的真金 ROI 极高；大R套利骗伤的重灾区全部集中在 <b>游戏(Casino)</b> 业务。因此，本次测试的 Bonus 缩表仅针对<b>游戏用户及混合用户中的“游戏福利部分”</b>，纯体育用户的召回面额不作任何干预。
+        </div>
+
+        <p style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">测试对象框定：</p>
+        <ul style="font-size: 14px; color: var(--text-main); margin-bottom: 25px;">
+            <li>国家限定：<b>KE、GH</b></li>
+            <li>层级限定：近1年历史充值归属于 <b>[50, 1000)</b> 及 <b>[1000, 10w)</b> 档位的流失用户。</li>
+            <li>业务偏好限定：受影响的仅为 <b>游戏用户 (Casino)</b> 与 <b>混合/未知用户 (Mixed)</b>。</li>
+            <li><span style="color:var(--danger)">⚠️ 极值排除：</span>风控需提前将这两个档位中“历史 Bonus 骗伤金额排名前 5%”的极危套利账户摘除，不参与测试。</li>
+        </ul>
+
+        <!-- Part 2: 分组定义 -->
+        <h2 class="section-title">二、 【To 技术/BI 团队】UID 尾号分组规则与福利配置</h2>
+        <p style="font-size: 14px; margin-bottom: 20px;">
+            为简化研发与 BI 取数逻辑，本次测试废除 Hash 算法，直接采用 <b>“UID 最后一位数字 (0-9)”</b> 进行固定划分。
+        </p>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th width="12%">组别划分</th>
+                    <th width="15%">UID 尾号</th>
+                    <th width="35%">游戏用户 (Casino) 福利规则</th>
+                    <th width="38%">混合用户 (Mixed/未知) 福利规则</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-a">A 组</span><br><b>(零福利测试)</b></td>
+                    <td style="font-weight: bold; color: var(--danger); font-size: 16px;">0, 1, 2</td>
+                    <td>
+                        <div class="rule-box">
+                            <div class="rule-title">游戏 Bonus: <span style="color: var(--danger)">$0 (无发放)</span></div>
+                            <span class="rule-badge">仅发短信召回</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="rule-box">
+                            <div class="rule-title">游戏 Bonus: <span style="color: var(--danger)">$0 (无发放)</span></div>
+                            <div class="rule-title" style="margin-top:8px;">体育 Coupon: <span style="color: var(--success)">保持原额度不变</span></div>
+                            <span class="rule-badge">保留原体育福利池</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-b">B 组</span><br><b>(近90天限额)</b></td>
+                    <td style="font-weight: bold; color: var(--accent); font-size: 16px;">3, 4, 5</td>
+                    <td>
+                        <div class="rule-box">
+                            <div class="rule-title">游戏 Bonus: <span style="color: var(--accent)">近 90 天充值额 * 5%</span></div>
+                            <span class="rule-badge">彻底阻断历史远古充值套利</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="rule-box">
+                            <div class="rule-title">游戏 Bonus: <span style="color: var(--accent)">近 90 天充值额 * 2.5%</span></div>
+                            <div class="rule-title" style="margin-top:8px;">体育 Coupon: <span style="color: var(--success)">保持原额度不变</span></div>
+                            <span class="rule-badge">游戏份额降权管控</span>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-c">C 组</span><br><b>(对照基线组)</b></td>
+                    <td style="font-weight: bold; color: var(--warning); font-size: 16px;">6, 7, 8, 9</td>
+                    <td>
+                        <div class="rule-box">
+                            <div class="rule-title">游戏 Bonus: <span style="color: var(--warning)">近 1 年充值额 * 5%</span></div>
+                            <span class="rule-badge">维持现有发放现状</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="rule-box">
+                            <div class="rule-title">游戏 Bonus: <span style="color: var(--warning)">近 1 年充值额 * 2.5%</span></div>
+                            <div class="rule-title" style="margin-top:8px;">体育 Coupon: <span style="color: var(--success)">保持原额度不变</span></div>
+                            <span class="rule-badge">维持现有发放现状</span>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="code-block">
+<span class="code-comment">-- BI 提数及 A/B/C 分组 SQL 参考逻辑 (获取 UID 尾号判断)</span>
+<span class="code-keyword">SELECT</span> 
+    uid,
+    country,
+    deposit_tier,
+    user_preference_type, <span class="code-comment">-- 必须输出 'Casino', 'Mixed', 'Sports'</span>
+    
+    <span class="code-comment">-- 取 UID 字符串的最后一位字符强转为 INT </span>
+    <span class="code-keyword">CASE CAST</span>(<span class="code-func">RIGHT</span>(<span class="code-func">CAST</span>(uid <span class="code-keyword">AS STRING</span>), 1) <span class="code-keyword">AS INT</span>)
+        <span class="code-keyword">WHEN</span> 0 <span class="code-keyword">THEN</span> <span class="code-string">'A组_尾号0-2'</span>
+        <span class="code-keyword">WHEN</span> 1 <span class="code-keyword">THEN</span> <span class="code-string">'A组_尾号0-2'</span>
+        <span class="code-keyword">WHEN</span> 2 <span class="code-keyword">THEN</span> <span class="code-string">'A组_尾号0-2'</span>
+        
+        <span class="code-keyword">WHEN</span> 3 <span class="code-keyword">THEN</span> <span class="code-string">'B组_尾号3-5'</span>
+        <span class="code-keyword">WHEN</span> 4 <span class="code-keyword">THEN</span> <span class="code-string">'B组_尾号3-5'</span>
+        <span class="code-keyword">WHEN</span> 5 <span class="code-keyword">THEN</span> <span class="code-string">'B组_尾号3-5'</span>
+        
+        <span class="code-keyword">WHEN</span> 6 <span class="code-keyword">THEN</span> <span class="code-string">'C组_尾号6-9'</span>
+        <span class="code-keyword">WHEN</span> 7 <span class="code-keyword">THEN</span> <span class="code-string">'C组_尾号6-9'</span>
+        <span class="code-keyword">WHEN</span> 8 <span class="code-keyword">THEN</span> <span class="code-string">'C组_尾号6-9'</span>
+        <span class="code-keyword">WHEN</span> 9 <span class="code-keyword">THEN</span> <span class="code-string">'C组_尾号6-9'</span>
+    <span class="code-keyword">END AS</span> ab_test_group
+<span class="code-keyword">FROM</span> 
+    user_recall_base_table
+<span class="code-keyword">WHERE</span> 
+    country <span class="code-keyword">IN</span> (<span class="code-string">'KE'</span>, <span class="code-string">'GH'</span>) 
+    <span class="code-keyword">AND</span> deposit_tier <span class="code-keyword">IN</span> (<span class="code-string">'[50, 1000)'</span>, <span class="code-string">'[1000, 10w)'</span>);
+        </div>
+
+        <!-- Part 3: 运营监控 -->
+        <h2 class="section-title">三、 【To 运营团队】触达包装与核心监控看板</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+            <div class="callout sports" style="margin-bottom:0;">
+                <strong style="color: var(--sports-color);">⚽ 体育/混合用户包装 (Sports/Mixed)</strong><br>
+                结合赛事热点，以<b>“世界杯”</b>作为核心话题进行营销测试。<br>
+                <i>SMS Demo: "World Cup fever is on! Log in to claim your exclusive Free Bet and boost your odds on upcoming matches! 🏆"</i>
+            </div>
+            <div class="callout casino" style="margin-bottom:0;">
+                <strong style="color: var(--casino-color);">🎰 纯游戏用户包装 (Casino Only)</strong><br>
+                绝不生硬套用体育赛事，主推<b>“专属老虎机锦标赛 / 新游戏爆奖”</b>。<br>
+                <i>SMS Demo: "Your VIP Slot drop is ready! 🎰 Spin our newest games this weekend and hit the massive Jackpots! Login now."</i>
+            </div>
+        </div>
+
+        <p style="font-size: 14.5px; font-weight: 700; margin-bottom: 15px;">每日 10:00 预警看板须盯紧的核心指标：</p>
+        
+        <!-- 飞书数据看板原型 -->
+        <div class="feishu-wrapper">
+            <div class="feishu-card">
+                <div class="feishu-header">
+                    <span style="font-size: 18px;">📊</span> 灰度测试 A/B/C 组每日核心指标看板
+                </div>
+                <div class="feishu-body">
+                    <div class="feishu-title">测试批次: 6月大客召回 [50, 10w) - GH 市场</div>
+                    
+                    <div class="feishu-data-row" style="background: #f8fafc; padding: 8px 10px; border-radius: 6px; border: none; margin-bottom: 10px;">
+                        <span class="feishu-label">当前跟踪周期</span>
+                        <span class="feishu-value" style="color: var(--accent);">Day 7 (2026-06-08)</span>
+                    </div>
+
+                    <!-- 核心指标网格 -->
+                    <div class="feishu-metrics-grid">
+                        <div class="metric-col">
+                            <div class="metric-col-title">A组 (零福利)</div>
+                            <div class="metric-val">回: 12% <span class="val-down" style="font-size:11px;">(⬇️ 60%)</span></div>
+                            <div class="metric-val" style="font-size: 13px; color:#64748b; margin-top:4px;">复充: 8%</div>
+                            <div class="metric-val val-up" style="font-size: 13px; margin-top:4px;">NGR: +$1.2k</div>
+                        </div>
+                        <div class="metric-col" style="border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
+                            <div class="metric-col-title" style="color: var(--accent);">B组 (近90天5%)</div>
+                            <div class="metric-val">回: 26% <span class="val-down" style="font-size:11px;">(⬇️ 13%)</span></div>
+                            <div class="metric-val" style="font-size: 13px; color:#64748b; margin-top:4px;">复充: 22%</div>
+                            <div class="metric-val val-down" style="font-size: 13px; margin-top:4px;">NGR: -$500</div>
+                        </div>
+                        <div class="metric-col">
+                            <div class="metric-col-title" style="color: var(--warning);">C组 (基线对照)</div>
+                            <div class="metric-val">回: 30% <span style="font-size:11px; color:#94a3b8;">(-)</span></div>
+                            <div class="metric-val" style="font-size: 13px; color:#64748b; margin-top:4px;">复充: 25%</div>
+                            <div class="metric-val val-down" style="font-size: 13px; margin-top:4px;">NGR: -$3.0k</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 15px; font-size: 13.5px; color: #475569; background: #eff6ff; padding: 12px; border-radius: 6px; border-left: 3px solid var(--accent);">
+                        <b>💡 系统研判：</b><br>
+                        A组 (零福利) 召回率暴跌，证实该客群对 Bonus 极度敏感。<b>B组 (新政) 召回率仅轻微下跌 13%，但在 D7 的 NGR 亏损深度显著优于 C组 ($500 vs $3000)。</b> 建议继续保持 B 组下发策略，B 组有望在 D10 内回正。
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Part 4: 客服话术 -->
+        <h2 class="section-title">四、 【To 客服团队】客诉拦截预案与分线 SOP 话术</h2>
+        <p style="font-size: 14px; margin-bottom: 20px;">
+            <strong style="color:var(--danger)">红线要求：客服绝不允许向用户使用“测试”、“降级”、“预算缩减”等词汇。必须根据用户属于“纯游戏”还是“体育/混合”采用对应的话术安抚。</strong>
+        </p>
+
+        <div class="sop-grid">
+            <!-- SOP 1: Casino 用户无福利 -->
+            <div class="sop-card">
+                <div class="sop-header">
+                    <span>场景 1：A组 纯游戏用户 (Casino Only) 进线质问</span>
+                    <span class="sop-tag casino">无福利游戏组</span>
+                </div>
+                <div class="sop-body">
+                    <div class="sop-intent">用户原话："为什么我这次回来账户里没有 Casino Bonus？"</div>
+                    <div class="sop-intent"><b>安抚策略：</b> 包装为 Casino VIP 体系升级，强调目前改为“活跃中随机掉落”。</div>
+                    <div class="sop-script">
+                        "Hello VIP! We've recently upgraded our Casino VIP Reward System. 🎰 Free bonuses and Free Spins are now randomly dropped to active players while they enjoy our slot games. Keep spinning your favorite games today, and you might trigger our next massive surprise drop! Good luck!"
+                    </div>
+                </div>
+            </div>
+
+            <!-- SOP 2: 体育/混合用户无福利 -->
+            <div class="sop-card">
+                <div class="sop-header">
+                    <span>场景 2：A组 混合用户 (Mixed/Sports) 进线质问</span>
+                    <span class="sop-tag sports">无游戏福利组</span>
+                </div>
+                <div class="sop-body">
+                    <div class="sop-intent">用户原话："为什么我这次回来没有 Casino Bonus，只有体育福利（或什么都没有）？"</div>
+                    <div class="sop-intent"><b>安抚策略：</b> 借世界杯热点，解释为近期福利重心完全转移到了体育赛事上。</div>
+                    <div class="sop-script">
+                        "Hello VIP! With the World Cup heat wave sweeping in, our reward system has shifted its main focus to bring you the best sports betting experience! ⚽ Your account has been specially selected for our Sports Carnival. While Casino drops are currently randomized, placing bets on upcoming matches will greatly boost your chance to trigger exclusive Casino surprise bonuses. Enjoy the games! 🏆"
+                    </div>
+                </div>
+            </div>
+
+            <!-- SOP 3: 游戏大户被降额 -->
+            <div class="sop-card">
+                <div class="sop-header">
+                    <span>场景 3：B组 游戏用户进线质问面额缩水</span>
+                    <span class="sop-tag casino">面额缩减组</span>
+                </div>
+                <div class="sop-body">
+                    <div class="sop-intent">用户原话："我以前都能拿到 $500 的游戏券，为什么这次只有几十刀？"</div>
+                    <div class="sop-intent"><b>安抚策略：</b> 解释为算法升级，更看重“近期 90 天的活跃度”。</div>
+                    <div class="sop-script">
+                        "Dear VIP, to provide a fairer gaming experience, our Casino VIP algorithm has been updated. 🌟 Your current reward is calculated based on your activity over the <b>last 90 days</b>. Spin more today to increase your future customized rewards! Let's hit the jackpots! 🎰"
+                    </div>
+                </div>
+            </div>
+
+            <!-- SOP 4: 极端特批 -->
+            <div class="sop-card" style="border: 1px solid var(--warning);">
+                <div class="sop-header" style="background: #fffbeb; color: var(--warning);">
+                    <span>场景 4：超大客极端愤怒，扬言卸载</span>
+                    <span class="sop-tag danger">红线特批授权</span>
+                </div>
+                <div class="sop-body">
+                    <div class="sop-intent"><b>处理准则与挽留动作：</b></div>
+                    <ul style="font-size: 13.5px; margin-top: 5px; padding-left: 18px; color: var(--text-main);">
+                        <li>若后台核实该客户为历史纯套利玩家（NGR 长期为巨额负数），坚决不予补偿，以固定话术婉拒，任其流失。</li>
+                        <li>若核实该客户为**高价值真实亏损玩家**（例如近 1 个月有超过 $1000 真金亏损），客服主管可动用 <strong>"Retention Fund"</strong>。</li>
+                        <li><strong>操作要求：</strong> 连声致歉，并手动派发一张小额（如 $20-$50）的 1倍流水体育专项券以作安抚（<b>坚持不发 Casino 券防洗水</b>），并标记跟进。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+</body>
+</html>
