@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>程序生成游戏地图</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(10, 24, 42, 0.88);
+      --panel-border: rgba(148, 163, 184, 0.25);
+      --text: #e5edf7;
+      --muted: #9fb0c6;
+      --accent: #38bdf8;
+      --grass: #46a758;
+      --forest: #1f6f43;
+      --water: #1e66d0;
+      --mountain: #8b7b70;
+      --sand: #d9b86f;
+      --road: #9a6a35;
+      --town: #efcf74;
+      --danger: #cf3f55;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(circle at 18% 10%, rgba(56, 189, 248, 0.24), transparent 28%),
+        radial-gradient(circle at 82% 4%, rgba(34, 197, 94, 0.15), transparent 25%),
+        linear-gradient(135deg, #06101e, #0b1525 48%, #08101c);
+      padding: 28px;
+    }
+
+    .app {
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+
+    header, .map-card, .legend-card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 20px;
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.32);
+      backdrop-filter: blur(16px);
+    }
+
+    header { padding: 24px; }
+    h1 { margin: 0 0 10px; font-size: clamp(28px, 4vw, 44px); letter-spacing: -0.04em; }
+    .subtitle { margin: 0; color: var(--muted); line-height: 1.7; }
+
+    .controls { display: grid; gap: 16px; margin-top: 24px; }
+    label { display: grid; gap: 8px; color: #c8d5e6; font-size: 14px; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 13px 18px;
+      color: #06101e;
+      font-weight: 800;
+      cursor: pointer;
+      background: linear-gradient(135deg, #7dd3fc, #34d399);
+      box-shadow: 0 10px 30px rgba(56, 189, 248, 0.26);
+    }
+
+    .legend-card { margin-top: 18px; padding: 20px; }
+    .legend-card h2 { margin: 0 0 14px; font-size: 18px; }
+    .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+    .legend span { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+    .swatch { width: 18px; height: 18px; border-radius: 5px; border: 1px solid rgba(255,255,255,.2); }
+
+    .map-card { padding: 18px; overflow: hidden; }
+    .map-toolbar { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 14px; color: var(--muted); font-size: 14px; }
+    #map {
+      display: grid;
+      grid-template-columns: repeat(28, minmax(16px, 1fr));
+      gap: 2px;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(2, 6, 23, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.16);
+    }
+
+    .tile {
+      aspect-ratio: 1;
+      border-radius: 5px;
+      position: relative;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+    .grass { background: var(--grass); }
+    .forest { background: var(--forest); }
+    .water { background: var(--water); }
+    .mountain { background: var(--mountain); }
+    .sand { background: var(--sand); }
+    .road { background: var(--road); }
+    .town { background: var(--town); }
+    .danger { background: var(--danger); }
+
+    .tile::after {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: clamp(10px, 1.35vw, 16px);
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,.45));
+    }
+    .forest::after { content: "♣"; }
+    .water::after { content: "≈"; }
+    .mountain::after { content: "▲"; }
+    .town::after { content: "◆"; color: #6b3f12; }
+    .danger::after { content: "✦"; }
+
+    .stats { display: grid; gap: 10px; margin-top: 18px; color: var(--muted); }
+    .stat { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(148,163,184,.18); padding-bottom: 8px; }
+
+    @media (max-width: 860px) {
+      body { padding: 16px; }
+      .app { grid-template-columns: 1fr; }
+      #map { grid-template-columns: repeat(28, minmax(9px, 1fr)); gap: 1px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section>
+      <header>
+        <h1>程序生成游戏地图</h1>
+        <p class="subtitle">一张可重复生成的 28×18 冒险地图：包含水域、森林、山脉、道路、城镇与危险区域，适合作为 RPG、肉鸽或策略原型地图。</p>
+        <div class="controls">
+          <label>地图种子：<strong id="seedValue">42</strong><input id="seed" type="range" min="1" max="999" value="42" /></label>
+          <label>地形复杂度：<strong id="roughnessValue">52%</strong><input id="roughness" type="range" min="20" max="85" value="52" /></label>
+          <button id="generate">重新生成地图</button>
+        </div>
+      </header>
+      <aside class="legend-card">
+        <h2>图例</h2>
+        <div class="legend" id="legend"></div>
+        <div class="stats" id="stats"></div>
+      </aside>
+    </section>
+
+    <section class="map-card">
+      <div class="map-toolbar"><span>地图尺寸：28 × 18</span><span id="mapName">晨雾边境</span></div>
+      <div id="map" aria-label="生成的游戏地图"></div>
+    </section>
+  </main>
+
+  <script>
+    const width = 28;
+    const height = 18;
+    const terrain = [
+      ["water", "水域"], ["sand", "浅滩"], ["grass", "草地"], ["forest", "森林"],
+      ["mountain", "山脉"], ["road", "道路"], ["town", "城镇"], ["danger", "危险区"]
+    ];
+    const names = ["晨雾边境", "翡翠海湾", "断脊山谷", "银沙群岛", "暮色荒原"];
+
+    const map = document.querySelector("#map");
+    const seed = document.querySelector("#seed");
+    const roughness = document.querySelector("#roughness");
+    const seedValue = document.querySelector("#seedValue");
+    const roughnessValue = document.querySelector("#roughnessValue");
+    const stats = document.querySelector("#stats");
+    const mapName = document.querySelector("#mapName");
+
+    function randomFactory(seedNumber) {
+      let value = seedNumber % 2147483647;
+      return () => (value = value * 16807 % 2147483647) / 2147483647;
+    }
+
+    function pickBase(noise, distance, complexity) {
+      const coast = distance < 0.14 ? 0.12 : 0;
+      if (noise + coast < 0.22) return "water";
+      if (noise < 0.29) return "sand";
+      if (noise > 0.86 - complexity * 0.12) return "mountain";
+      if (noise > 0.62 - complexity * 0.18) return "forest";
+      return "grass";
+    }
+
+    function generate() {
+      const rng = randomFactory(Number(seed.value));
+      const complexity = Number(roughness.value) / 100;
+      const counts = Object.fromEntries(terrain.map(([key]) => [key, 0]));
+      const tiles = [];
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const nx = x / (width - 1) - 0.5;
+          const ny = y / (height - 1) - 0.5;
+          const distance = Math.sqrt(nx * nx + ny * ny);
+          const waves = Math.sin((x + Number(seed.value)) * 0.55) * 0.10 + Math.cos((y - Number(seed.value)) * 0.42) * 0.10;
+          const noise = rng() * (0.58 + complexity * 0.42) + waves - distance * 0.18;
+          tiles.push(pickBase(noise, distance, complexity));
+        }
+      }
+
+      const roadY = Math.floor(height * (0.45 + rng() * 0.18));
+      for (let x = 2; x < width - 2; x++) {
+        const y = Math.max(1, Math.min(height - 2, roadY + Math.round(Math.sin(x * 0.7 + seed.value) * 2)));
+        tiles[y * width + x] = "road";
+      }
+
+      [[5, roadY], [Math.floor(width * 0.52), roadY + 1], [width - 6, roadY - 1]].forEach(([x, y]) => {
+        tiles[Math.max(0, Math.min(height - 1, y)) * width + x] = "town";
+      });
+
+      for (let i = 0; i < 9; i++) {
+        const x = Math.floor(rng() * width);
+        const y = Math.floor(rng() * height);
+        if (!["town", "road", "water"].includes(tiles[y * width + x])) tiles[y * width + x] = "danger";
+      }
+
+      map.innerHTML = "";
+      tiles.forEach(type => {
+        counts[type]++;
+        const tile = document.createElement("span");
+        tile.className = `tile ${type}`;
+        tile.title = terrain.find(([key]) => key === type)[1];
+        map.appendChild(tile);
+      });
+
+      stats.innerHTML = terrain.map(([key, label]) => `<div class="stat"><span>${label}</span><strong>${counts[key]}</strong></div>`).join("");
+      mapName.textContent = names[Number(seed.value) % names.length];
+      seedValue.textContent = seed.value;
+      roughnessValue.textContent = `${roughness.value}%`;
+    }
+
+    document.querySelector("#legend").innerHTML = terrain.map(([key, label]) => `<span><i class="swatch ${key}"></i>${label}</span>`).join("");
+    document.querySelector("#generate").addEventListener("click", generate);
+    seed.addEventListener("input", generate);
+    roughness.addEventListener("input", generate);
+    generate();
+  </script>
+</body>
+</html>
