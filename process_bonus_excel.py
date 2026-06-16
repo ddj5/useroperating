@@ -7,8 +7,10 @@ machines where openpyxl/pandas are not installed.
 from __future__ import annotations
 
 import argparse
+import os
 import posixpath
 import re
+import sys
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -224,5 +226,26 @@ def main() -> None:
             print(f"已输出: {output_path}")
 
 
+def _should_pause_before_exit() -> bool:
+    return os.name == "nt" and len(sys.argv) == 1 and os.environ.get("PROCESS_BONUS_EXCEL_NO_PAUSE") != "1"
+
+
+def cli() -> int:
+    try:
+        main()
+        return 0
+    except SystemExit as exc:
+        if exc.code in (None, 0):
+            return 0
+        print(exc.code)
+        return exc.code if isinstance(exc.code, int) else 1
+    except Exception as exc:
+        print(f"处理失败: {exc}")
+        return 1
+    finally:
+        if _should_pause_before_exit():
+            input("按回车键退出...")
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(cli())
