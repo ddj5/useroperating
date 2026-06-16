@@ -168,26 +168,60 @@ def build_outputs(wb: WorkbookData) -> dict[str, dict[str, list[list[object]]]]:
     return {"bonus1": {"bonus1": bonus1}, "bonus2": {"bonus2": bonus2}, "coupon": {"优惠券模板": coupon}}
 
 
+def _is_generated_output(path: Path) -> bool:
+    name = path.name
+    return (
+        name.startswith("~$")
+        or name.endswith("_bonus1.xlsx")
+        or name.endswith("_bonus2.xlsx")
+        or name.endswith("_优惠券模板.xlsx")
+    )
+
+
+def find_input_workbooks(directory: Path) -> list[Path]:
+    return sorted(path for path in directory.glob("*.xlsx") if not _is_generated_output(path))
+
+
+def process_workbook(input_path: Path, output_dir: Path | None = None, prefix: str | None = None) -> list[Path]:
+    wb = read_xlsx(input_path)
+    outputs = build_outputs(wb)
+    target_dir = output_dir or input_path.parent
+    target_dir.mkdir(parents=True, exist_ok=True)
+    output_prefix = prefix or input_path.stem
+    output_paths = [
+        target_dir / f"{output_prefix}_bonus1.xlsx",
+        target_dir / f"{output_prefix}_bonus2.xlsx",
+        target_dir / f"{output_prefix}_优惠券模板.xlsx",
+    ]
+    write_xlsx(output_paths[0], outputs["bonus1"])
+    write_xlsx(output_paths[1], outputs["bonus2"])
+    write_xlsx(output_paths[2], outputs["coupon"])
+    return output_paths
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="处理召回 bonus Excel，并输出 bonus 与优惠券模板 Excel。")
-    parser.add_argument("input", type=Path, help="上传/源 Excel，例如 gh召回0612_bonus.xlsx")
-    parser.add_argument("--output-dir", type=Path, default=Path("output"), help="输出目录，默认 output")
+    parser.add_argument("input", type=Path, nargs="?", help="上传/源 Excel，例如 gh召回0612_bonus.xlsx；不填时自动处理脚本所在文件夹中的 Excel")
+    parser.add_argument("--output-dir", type=Path, default=None, help="输出目录；默认输出到输入 Excel 所在文件夹")
     parser.add_argument("--prefix", default=None, help="输出文件名前缀；默认使用输入文件名")
     args = parser.parse_args()
 
-    wb = read_xlsx(args.input)
-    outputs = build_outputs(wb)
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    prefix = args.prefix or args.input.stem
-    bonus1_path = args.output_dir / f"{prefix}_bonus1.xlsx"
-    bonus2_path = args.output_dir / f"{prefix}_bonus2.xlsx"
-    coupon_path = args.output_dir / f"{prefix}_优惠券模板.xlsx"
-    write_xlsx(bonus1_path, outputs["bonus1"])
-    write_xlsx(bonus2_path, outputs["bonus2"])
-    write_xlsx(coupon_path, outputs["coupon"])
-    print(f"已输出: {bonus1_path}")
-    print(f"已输出: {bonus2_path}")
-    print(f"已输出: {coupon_path}")
+    if args.input:
+        input_paths = [args.input]
+    else:
+        script_dir = Path(__file__).resolve().parent
+        input_paths = find_input_workbooks(script_dir)
+        if not input_paths:
+            raise SystemExit(f"未在脚本所在文件夹找到可处理的 Excel：{script_dir}")
+
+    if len(input_paths) > 1 and args.prefix:
+        raise SystemExit("批量处理多个 Excel 时不能使用 --prefix；请移除 --prefix 或手动指定单个输入文件。")
+
+    for input_path in input_paths:
+        print(f"开始处理: {input_path}")
+        output_paths = process_workbook(input_path, args.output_dir, args.prefix)
+        for output_path in output_paths:
+            print(f"已输出: {output_path}")
 
 
 if __name__ == "__main__":
