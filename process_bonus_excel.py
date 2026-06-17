@@ -41,6 +41,13 @@ def _num_to_col(n: int) -> str:
     return s
 
 
+def _resolve_workbook_rel_target(target: str) -> str:
+    target = target.lstrip("/")
+    if target.startswith("xl/"):
+        return posixpath.normpath(target)
+    return posixpath.normpath(posixpath.join("xl", target))
+
+
 @dataclass
 class WorkbookData:
     sheets: dict[str, list[dict[str, str]]]
@@ -77,7 +84,7 @@ def read_xlsx(path: Path) -> WorkbookData:
         for sh in wb.findall("m:sheets/m:sheet", NS):
             name = sh.attrib["name"]
             rid = sh.attrib[f"{{{REL_NS}}}id"]
-            ws_path = posixpath.normpath("xl/" + rels[rid].lstrip("/"))
+            ws_path = _resolve_workbook_rel_target(rels[rid])
             rows: list[list[str]] = []
             root = ET.fromstring(zf.read(ws_path))
             for row in root.findall("m:sheetData/m:row", NS):
