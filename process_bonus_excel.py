@@ -219,6 +219,7 @@ def main() -> None:
         input_paths = [args.input]
     else:
         script_dir = Path(__file__).resolve().parent
+        print(f"自动检索脚本所在文件夹: {script_dir}")
         input_paths = find_input_workbooks(script_dir)
         if not input_paths:
             raise SystemExit(f"未在脚本所在文件夹找到可处理的 Excel：{script_dir}")
@@ -231,6 +232,7 @@ def main() -> None:
         output_paths = process_workbook(input_path, args.output_dir, args.prefix)
         for output_path in output_paths:
             print(f"已输出: {output_path}")
+    print("处理完成。")
 
 
 def _should_pause_before_exit() -> bool:
