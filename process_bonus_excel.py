@@ -16,8 +16,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-MAIN_SHEET_NAMES = {"A", "B", "C", "A组", "B组", "C组", "Group A", "Group B", "Group C"}
-GROUP_MAP = {"A": "Group A", "B": "Group B", "C": "Group C", "A组": "Group A", "B组": "Group B", "C组": "Group C"}
 COUPON_IDS = {"ng": "89199", "tz": "89198", "ug": "89197", "gh": "89196", "ke": "89195"}
 SPORTS_COUPON_COL = "No-Deposit Sports Coupon(odd>2.5)"
 CASH_BONUS_COL = "casinobonus"
@@ -56,16 +54,14 @@ class WorkbookData:
     @property
     def rows(self) -> list[dict[str, str]]:
         out: list[dict[str, str]] = []
-        for name, rows in self.sheets.items():
-            if _is_input_group_sheet(name, rows):
+        for rows in self.sheets.values():
+            if _is_input_sheet(rows):
                 for row in rows:
-                    row = dict(row)
-                    row.setdefault("label", GROUP_MAP.get(name, name))
-                    out.append(row)
+                    out.append(dict(row))
         return out
 
 
-def _is_input_group_sheet(name: str, rows: list[dict[str, str]]) -> bool:
+def _is_input_sheet(rows: list[dict[str, str]]) -> bool:
     if not rows:
         return False
     # Newer exports may use a generic sheet name such as Sheet1.
